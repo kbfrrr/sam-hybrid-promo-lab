@@ -1,0 +1,8 @@
+-- TODO D1: Write your own three table definitions using PDF pages 5-7.
+-- Use InnoDB and utf8mb4. Create customers before marketing_outbox.
+-- customers: customer_id PK, unique email, marketing_opt_in restricted to 0/1.
+-- marketing_outbox: request_id PK, customer FK, UNIQUE(campaign_id, customer_id).
+-- Outbox statuses: PENDING and QUEUED, default PENDING.
+-- sent_marketing_emails: PRIMARY KEY(campaign_id, customer_id), no customer FK.
+-- History statuses: SENT, SKIPPED, FAILED. Use the PDF's exact field specifications.
+-- Table definitions only: no database creation, INSERTs, dumps, or generated records.

@@ -1,0 +1,25 @@
+{
+    "name": "student/marketing-email-lab",
+    "description": "Reconstructed teaching starter for the hybrid promotional campaign laboratory.",
+    "type": "project",
+    "license": "proprietary",
+    "require": {
+        "php": "^8.2",
+        "ext-pdo": "*",
+        "ext-pdo_mysql": "*",
+        "ext-openssl": "*",
+        "ext-mbstring": "*",
+        "ext-simplexml": "*",
+        "aws/aws-sdk-php": "^3.0",
+        "phpmailer/phpmailer": "^7.0",
+        "fakerphp/faker": "^1.24"
+    },
+    "autoload": {
+        "psr-4": {
+            "Lab\\": "src/"
+        }
+    },
+    "config": {
+        "sort-packages": true
+    }
+}
