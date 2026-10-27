@@ -11,8 +11,8 @@
                 "sqs:GetQueueUrl"
             ],
             "Resource": [
-                "arn:aws:sqs:REGION:ACCOUNT_ID:MarketingEmailQueue-STUDENT_ID",
-                "arn:aws:sqs:REGION:ACCOUNT_ID:MarketingEmailDLQ-STUDENT_ID"
+                "arn:aws:sqs:ap-southeast-2:408852558600:MarketingEmailQueue-Ferrer",
+                "arn:aws:sqs:ap-southeast-2:408852558600:MarketingEmailDLQ-Ferrer"
             ]
         }
     ]

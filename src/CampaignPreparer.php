@@ -22,10 +22,22 @@ final class CampaignPreparer
 
         $this->db->beginTransaction();
         try {
-            // TODO C3: Count this campaign's existing outbox rows BEFORE selection.
-            // If exactly 50 exist, commit and return 0 without changing their IDs/code.
-            // If a nonzero partial count exists, throw an inconsistency exception.
-            throw new LogicException('Complete TODO C3: preserve the original 50-recipient selection.');
+            // C3: Preserve an existing complete campaign before drawing any new recipients.
+            $count = $this->db->prepare(
+                'SELECT COUNT(*) FROM marketing_outbox WHERE campaign_id = ?'
+            );
+            $count->execute([$campaignId]);
+            $existingCount = (int) $count->fetchColumn();
+            if ($existingCount === 50) {
+                $this->db->commit();
+                return 0;
+            }
+            if ($existingCount !== 0) {
+                throw new LogicException(
+                    "Campaign {$campaignId} has {$existingCount} requests; expected 0 or 50. "
+                    . 'Investigate the inconsistent selection before preparing it again.'
+                );
+            }
 
             $recipients = $this->selectRecipients();
             if (count($recipients) !== 50) {
@@ -42,9 +54,11 @@ final class CampaignPreparer
                 $requestId = bin2hex(random_bytes(16));
                 $customerId = $recipient['customer_id'];
                 $createdAt = gmdate('Y-m-d H:i:s');
-                // TODO C1: Execute $insert with these seven variables in column order:
-                // requestId, campaignId, customerId, promoCode, subject, body, createdAt.
-                throw new LogicException('Complete TODO C1: persist each prepared request.');
+                // C1: Persist the request once, in the prepared statement's column order.
+                $insert->execute([
+                    $requestId, $campaignId, $customerId, $promoCode,
+                    $subject, $body, $createdAt,
+                ]);
             }
             $this->db->commit();
             return 50;
@@ -58,8 +72,9 @@ final class CampaignPreparer
 
     private function selectRecipients(): array
     {
-        // TODO C2: Write a SELECT for exactly 50 distinct random opted-in customers.
-        // Return rows containing customer_id. Sampling must be without replacement.
-        throw new LogicException('Complete TODO C2: select 50 random eligible customers.');
+        // C2: Each primary-key customer row can appear only once in this sample.
+        return $this->db->query(
+            'SELECT customer_id FROM customers WHERE marketing_opt_in = 1 ORDER BY RAND() LIMIT 50'
+        )->fetchAll(PDO::FETCH_ASSOC);
     }
 }

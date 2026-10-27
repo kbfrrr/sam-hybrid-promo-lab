@@ -19,5 +19,9 @@ if (!is_file($autoload)) {
 }
 require $autoload;
 
+// This CLI-only application and the AWS SDK read getenv(), so enable putenv support.
+// Existing terminal variables take precedence over values in the optional .env file.
+Dotenv\Dotenv::createUnsafeImmutable(__DIR__)->safeLoad();
+
 // Configuration is lazy: offline entry scripts do not construct SQS/SMTP clients.
 // Environment variables are read by Settings when the corresponding service is used.

@@ -1,0 +1,4 @@
+# Configuration files must not be served from this XAMPP document-root folder.
+<FilesMatch "^\.env(?:\..*)?$">
+    Require all denied
+</FilesMatch>

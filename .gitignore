@@ -1,16 +1,35 @@
+# Installed dependencies and generated runtime files.
 /vendor/
+/node_modules/
 /logs/
-/.env
-/.env.*
+/cache/
+/.cache/
+/tmp/
+/temp/
+*.log
+*.jsonl
+
+# Local credentials and configuration. Keep the shareable template.
+.env
+.env.*
 !/.env.example
 /config.local.php
 /set-env.local.ps1
+*.local.php
+*.local.ps1
 /credentials*
+/.aws/
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Generated customer records, database dumps, and backup archives.
 /data/
 /exports/
 /backups/
-*.log
-*.jsonl
+*.sql
+!/schema.sql
 *.sql.gz
 *.dump
 *.sqlite
@@ -18,5 +37,53 @@
 *.csv
 *.tsv
 *.zip
+*.7z
+*.rar
+*.tar
+*.tar.gz
+*.bak
+*.old
+
+# AI agent instructions, memory, rules, and local conversations.
+AGENTS.md
+AGENTS.override.md
+CLAUDE*.md
+GEMINI*.md
+CODEX*.md
+COPILOT*.md
+MEMORY.md
+*.instructions.md
+*.prompt.md
+/.agents/
+/.codex/
+/.claude/
+/.gemini/
+/.cursor/
+/.continue/
+/.roo/
+/.windsurf/
+/.aider*
+.cursorrules
+.clinerules
+.windsurfrules
+/.github/copilot-instructions.md
+/.github/instructions/
+/.github/agents/
+/.github/prompts/
+
+# Editor, operating-system, and patch artifacts.
 /.idea/
 /.vscode/
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.tmp
+*.temp
+*.swp
+*.swo
+*.orig
+*.rej
+*~
+
+# Required submission files stay included; do not ignore all Markdown or JSON.
+# README.md, composer.json, composer.lock, iam-policy.json, and source PHP are kept.

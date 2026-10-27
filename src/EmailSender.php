@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace Lab;
 
-use LogicException;
 use PHPMailer\PHPMailer\PHPMailer;
 
 final class EmailSender
@@ -12,8 +11,6 @@ final class EmailSender
 
     public function send(array $customer, array $job): string
     {
-        throw new LogicException('Complete TODO E1-E2 in EmailSender::send(), then remove this guard.');
-
         $mail = new PHPMailer(true);
         $mail->isSMTP();
         $mail->Host = $this->settings['host'];
@@ -28,8 +25,15 @@ final class EmailSender
         $mail->setFrom($this->settings['from'], 'Marketing laboratory');
         $mail->isHTML(false);
 
-        // TODO E1: Add the customer's email and full_name as the recipient.
-        // TODO E2: Set Subject and a personalized plain-text Body containing job promoCode.
+        // E1: Address the message to the selected fictional customer.
+        $mail->addAddress($customer['email'], $customer['full_name']);
+
+        // E2: Personalize the plain-text message using the persisted campaign data.
+        $mail->Subject = $job['subject'];
+        $mail->Body =
+            "Hello {$customer['full_name']},\n\n"
+            . $job['body'] . "\n\n"
+            . "Your promotional code: {$job['promoCode']}\n";
 
         // Do not disable TLS certificate verification or suppress exceptions.
         $mail->send();

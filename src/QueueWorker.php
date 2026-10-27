@@ -5,7 +5,6 @@ namespace Lab;
 
 use Aws\Sqs\SqsClient;
 use InvalidArgumentException;
-use LogicException;
 use Throwable;
 
 final class QueueWorker
@@ -19,10 +18,6 @@ final class QueueWorker
 
     public function run(): void
     {
-        // Remove this guard only after W1-W2, M3, AND processor/sender tasks are complete.
-        // This prevents unfinished code from receiving live jobs and driving them into a DLQ.
-        throw new LogicException('Complete the processor/sender and TODO W1-W2/M3 before starting the worker.');
-
         while (true) {
             try {
                 $result = $this->sqs->receiveMessage([
@@ -64,11 +59,18 @@ final class QueueWorker
                 'customerId' => $job['customerId'],
             ];
             $phase = 'process';
-            // TODO W1: Invoke the injected processor with this validated job.
-            throw new LogicException('Complete TODO W1-W2 and M3 in QueueWorker::handle().');
-            // TODO M3 (phase): Change $phase to 'delete' BEFORE acknowledgment.
-            // TODO W2: DeleteMessage with QueueUrl and this message's CURRENT ReceiptHandle.
-            // TODO M3 (deleted): Record deleted with $context AFTER deletion succeeds.
+            // W1: Processing must return normally after saving a terminal outcome.
+            $this->processor->process($job);
+
+            // M3/W2: Acknowledge with the current receipt, after processing succeeds.
+            $phase = 'delete';
+            $this->sqs->deleteMessage([
+                'QueueUrl' => $this->queueUrl,
+                'ReceiptHandle' => $message['ReceiptHandle'],
+            ]);
+
+            // M3: Only report deletion once SQS has acknowledged it.
+            $this->logger->record('deleted', $context);
         } catch (Throwable $error) {
             $this->logger->record($phase === 'delete' ? 'ack_failed' : 'processing_failed',
                 $context + ['phase' => $phase, 'errorType' => get_class($error)]

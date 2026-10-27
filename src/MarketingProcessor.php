@@ -4,7 +4,6 @@ declare(strict_types=1);
 namespace Lab;
 
 use InvalidArgumentException;
-use LogicException;
 use PDO;
 use Throwable;
 
@@ -48,27 +47,45 @@ final class MarketingProcessor
             'customerId' => $job['customerId'],
         ];
 
-        // TODO P1: Use history->isComplete(campaignId, customerId). If true,
-        // record duplicate_skipped and return. SENT and SKIPPED are terminal.
-        throw new LogicException('Complete TODO P1-P5 and M2 before processing messages.');
+        // P1: Terminal outcomes suppress sequential duplicate submissions.
+        if ($this->history->isComplete($job['campaignId'], $job['customerId'])) {
+            $this->logger->record('duplicate_skipped', $context);
+            return;
+        }
 
+        $sendAttempted = false;
         try {
-            // TODO M2 (start): Record processing_started using $context.
-            // TODO P2: Use a prepared SELECT and job customerId to fetch the customer.
-            $customer = null;
+            // M2: Record entry into the validated processing workflow.
+            $this->logger->record('processing_started', $context);
+
+            // P2: Load current customer data and consent from the local database.
+            $statement = $this->db->prepare(
+                'SELECT customer_id, full_name, email, marketing_opt_in '
+                . 'FROM customers WHERE customer_id = ?'
+            );
+            $statement->execute([$job['customerId']]);
+            $customer = $statement->fetch(PDO::FETCH_ASSOC);
 
             if (!$customer || (int) $customer['marketing_opt_in'] !== 1) {
                 $reason = !$customer ? 'Customer not found.' : 'Customer has not opted in.';
-                // TODO P3: history->save(job, 'SKIPPED', ['reason' => reason]).
-                // TODO M2 (skip): Record skipped AFTER saving, then return.
-                throw new LogicException('Complete TODO P3 and M2 for consent/missing-customer skips.');
+                // P3/M2: Persist the terminal skip before reporting it as complete.
+                $this->history->save($job, 'SKIPPED', ['reason' => $reason]);
+                $this->logger->record('skipped', $context);
+                return;
             }
 
-            // TODO P4: Call the injected sender and retain its returned MIME Message-ID.
-            $messageId = null;
-            // TODO P5: Save SENT with recipient_email, provider, message_id, and UTC sent_at.
-            // TODO M2 (sent): Record sent ONLY AFTER the local SENT save succeeds.
-            throw new LogicException('Complete TODO P4-P5 and M2 for successful submissions.');
+            // P4: SMTP exceptions must propagate so the worker does not acknowledge.
+            $sendAttempted = true;
+            $messageId = $this->sender->send($customer, $job);
+
+            // P5/M2: Store SMTP acceptance locally before logging a successful outcome.
+            $this->history->save($job, 'SENT', [
+                'recipient_email' => $customer['email'],
+                'provider' => 'Mailtrap',
+                'message_id' => $messageId,
+                'sent_at' => gmdate('Y-m-d H:i:s'),
+            ]);
+            $this->logger->record('sent', $context);
         } catch (Throwable $error) {
             // Only validated jobs have usable history keys. Never acknowledge this failure.
             // Do not overwrite a terminal outcome if only post-save logging failed.
@@ -80,8 +97,8 @@ final class MarketingProcessor
             throw $error;
         } finally {
             // Throttle failed attempts too: SMTP acceptance can precede a later error.
-            // Duplicate and skipped branches should not submit any email.
-            if ($this->delaySeconds > 0) {
+            // No rate-limit delay is needed when no SMTP submission was attempted.
+            if ($sendAttempted && $this->delaySeconds > 0) {
                 sleep($this->delaySeconds);
             }
         }

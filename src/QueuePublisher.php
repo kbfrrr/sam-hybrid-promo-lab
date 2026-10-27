@@ -4,8 +4,8 @@ declare(strict_types=1);
 namespace Lab;
 
 use Aws\Sqs\SqsClient;
-use LogicException;
 use PDO;
+use RuntimeException;
 use Throwable;
 
 final class QueuePublisher
@@ -19,8 +19,6 @@ final class QueuePublisher
 
     public function publishPending(): int
     {
-        throw new LogicException('Complete TODO Q1-Q2 and M1 before publishing; then remove this guard.');
-
         $rows = $this->db->query(
             "SELECT * FROM marketing_outbox WHERE status = 'PENDING' ORDER BY created_at, request_id"
         )->fetchAll();
@@ -36,20 +34,39 @@ final class QueuePublisher
                 'subject' => $row['subject'], 'body' => $row['body'],
             ];
             $phase = 'send';
+            $messageId = null;
             try {
-                // TODO Q1: sendMessage with QueueUrl and JSON_THROW_ON_ERROR MessageBody.
-                $result = null;
+                // Q1: Publish the persisted request without selecting new recipients.
+                $result = $this->sqs->sendMessage([
+                    'QueueUrl' => $this->queueUrl,
+                    'MessageBody' => json_encode($job, JSON_THROW_ON_ERROR),
+                ]);
+                $messageId = $result['MessageId'] ?? null;
+                if (!is_string($messageId) || $messageId === '') {
+                    throw new RuntimeException('SQS did not return a publication MessageId.');
+                }
+
                 $phase = 'outbox_update';
-                // TODO Q2: Execute $update AFTER SQS acknowledgment with UTC queued_at,
-                // returned MessageId, and local request_id. Never generate a new request ID.
+                // Q2: Record QUEUED only after SQS confirms acceptance.
+                $update->execute([
+                    gmdate('Y-m-d H:i:s'), $messageId, $row['request_id'],
+                ]);
+                if ($update->rowCount() !== 1) {
+                    throw new RuntimeException('The acknowledged request was not updated from PENDING to QUEUED.');
+                }
+
                 $phase = 'log';
-                // TODO M1: Record queued after both SQS and the outbox update succeed.
-                // Include requestId, campaignId, customerId, and SQS messageId.
+                // M1: Correlate publication only after both acknowledgments succeed.
+                $this->logger->record('queued', [
+                    'requestId' => $job['requestId'], 'campaignId' => $job['campaignId'],
+                    'customerId' => $job['customerId'], 'messageId' => $messageId,
+                ]);
                 $published++;
             } catch (Throwable $error) {
                 $this->logger->record('enqueue_failed', [
                     'requestId' => $job['requestId'], 'campaignId' => $job['campaignId'],
                     'customerId' => $job['customerId'], 'phase' => $phase,
+                    'messageId' => $messageId,
                     'errorType' => get_class($error),
                 ]);
                 throw $error;
