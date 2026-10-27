@@ -21,7 +21,7 @@ Faker → Local MariaDB → SQS → PHP Worker → Mailtrap Sandbox
 1. Clone the repository and install dependencies:
 
    ```powershell
-   git clone https://github.com/kbfrrr/Queue-Messages-using-SQS.git marketing-email-lab
+   git clone https://github.com/kbfrrr/sam-hybrid-promo-lab.git marketing-email-lab
    cd marketing-email-lab
    composer install
    Copy-Item .env.example .env
